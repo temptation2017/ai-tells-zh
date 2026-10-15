@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 腔检测 · ai-tells-zh</title>
+<style>
+  :root { --ink:#1f1d1a; --paper:#faf7f0; --line:#e4ddcc; --mark:#ffe08a; --hi:#c0392b; --mid:#d68910; --lo:#1e8449; --muted:#6f6857; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--paper); color:var(--ink); font:15px/1.65 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif }
+  header { padding:28px 24px 8px; max-width:1100px; margin:auto }
+  h1 { margin:0; font-size:26px; letter-spacing:.5px }
+  header p { margin:4px 0 0; color:var(--muted) }
+  main { max-width:1100px; margin:auto; padding:12px 24px 40px; display:grid; grid-template-columns:1fr 1fr; gap:18px }
+  @media (max-width:820px){ main { grid-template-columns:1fr } }
+  .card { background:#fff; border:1px solid var(--line); border-radius:10px; padding:14px 16px }
+  textarea { width:100%; min-height:300px; border:1px solid var(--line); border-radius:8px; padding:10px; font:inherit; background:#fffdf8; resize:vertical }
+  .bar { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap }
+  button { border:1px solid var(--line); background:#fff; border-radius:6px; padding:5px 12px; cursor:pointer; font:inherit; font-size:13px }
+  button:hover { background:#f3eee1 }
+  .score { display:flex; align-items:baseline; gap:10px }
+  .score b { font-size:38px; line-height:1 }
+  #preview { white-space:pre-wrap; word-break:break-word; max-height:260px; overflow:auto; border-top:1px dashed var(--line); margin-top:10px; padding-top:10px }
+  mark { background:var(--mark); border-radius:3px; padding:0 1px }
+  .f { border-top:1px solid #f0ebde; padding:8px 0 }
+  .f small { color:var(--muted); display:block }
+  .bm { display:inline-block; background:var(--ink); color:#fff; padding:6px 14px; border-radius:20px; text-decoration:none; font-weight:600 }
+  footer { max-width:1100px; margin:auto; padding:0 24px 30px; color:var(--muted); font-size:13px }
+  code { background:#f1ece0; padding:1px 5px; border-radius:4px }
+</style>
+</head>
+<body>
+<header>
+  <h1>AI 腔检测</h1>
+  <p>贴一段中文（或英文），标出“在当今时代”“值得注意的是”“希望对你有帮助”这类生成痕迹。全部在本地浏览器里算，不上传。</p>
+</header>
+<main>
+  <section class="card">
+    <textarea id="in" placeholder="把文章、周报、公众号稿或 AI 回复粘贴到这里…"></textarea>
+    <div class="bar">
+      <button id="demoAi">示例：AI 腔</button>
+      <button id="demoPlain">示例：人写</button>
+      <button id="clear">清空</button>
+    </div>
+    <div id="preview"></div>
+  </section>
+  <section class="card">
+    <div class="score"><b id="score">0</b><span id="level">粘贴文字后自动检测</span></div>
+    <div id="meta" style="color:var(--muted);font-size:13px"></div>
+    <div id="findings"></div>
+  </section>
+  <section class="card" style="grid-column:1/-1">
+    <b>书签小工具</b>：把下面的按钮拖到浏览器书签栏。在任意网页上选中一段文字（或光标停在输入框里）再点它，右上角会弹出检测结果；什么都不选就检测整页。再点一次关闭。
+    <p><a class="bm" id="bm" href="#">AI 腔检测</a> <small style="color:var(--muted)">（约 <span id="bmsize"></span> KB，不联网，不加载外部脚本）</small></p>
+  </section>
+</main>
+<footer>
+  分数 = 命中规则的加权次数 ÷ 千字。低于 12 为低，12–29 为中，30 以上为高。规则是启发式的，只用来提醒自己改稿，不能证明一段文字是不是 AI 写的。
+  源码：<a href="https://github.com/temptation2017/ai-tells-zh">github.com/temptation2017/ai-tells-zh</a>
+</footer>
+<script src="tells.js"></script>
+<script src="panel.js"></script>
+<script>
+var A = AITellsFactory();
+var $ = function (id) { return document.getElementById(id); };
+var DEMO_AI = '这是一个非常好的问题！在当今数字化飞速发展的时代，远程办公已经成为一种新常态。\n\n随着互联网技术的不断发展，越来越多的团队开始尝试异地协作。值得注意的是，远程办公不仅仅是工作地点的变化，更是管理方式的深度融合与重塑。\n\n首先，我们需要建立清晰的沟通机制——这是一切的基础。其次，要为团队赋能，打造协作生态。最后，要形成管理闭环。\n\n- ✅ 明确目标\n- 🚀 提升效率\n- ✨ 持续优化\n\n总而言之，远程办公不是简单的“在家上班”，而是一场深刻的组织变革。希望以上内容对你有所帮助！如果你还有其他问题，欢迎随时提问。';
+var DEMO_PLAIN = '我们组远程办公三个月了，说几件具体的事。\n\n每天 10 点开 15 分钟站会，只说昨天卡在哪。超过 15 分钟的话题会后单独拉人。\n\n代码评审改成当天必须回复，没空就写一句“明天看”。这条执行后，合并等待时间从平均两天降到半天。\n\n最麻烦的是新同事入职。第一周我们安排一个固定的人陪他配环境，比发文档有用得多。';
+
+function esc(s) { return s.replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+function render() {
+  var text = $('in').value;
+  var r = A.analyze(text);
+  var color = r.level === '高' ? 'var(--hi)' : r.level === '中' ? 'var(--mid)' : 'var(--lo)';
+  $('score').textContent = r.score;
+  $('score').style.color = color;
+  $('level').innerHTML = text.trim() ? 'AI 腔：<b style="color:' + color + '">' + r.level + '</b>' : '粘贴文字后自动检测';
+  $('meta').textContent = text.trim() ? '约 ' + r.size + ' 字，命中 ' + r.findings.length + ' 类规则' : '';
+
+  var html = '';
+  if (text.trim() && !r.findings.length) html = '<p style="color:var(--lo)">没发现常见套话。</p>';
+  r.findings.forEach(function (f) {
+    html += '<div class="f"><b>' + esc(f.name) + '</b> × ' + f.count + '<small>' + esc(f.hint) + '</small></div>';
+  });
+  $('findings').innerHTML = html;
+
+  // 预览里高亮命中片段（密度类和路标类只高亮实际字符）
+  var spans = [];
+  r.findings.forEach(function (f) { f.hits.forEach(function (h) { if (f.id !== 'sequence') spans.push([h.index, h.index + h.match.length, f.name]); }); });
+  spans.sort(function (a, b) { return a[0] - b[0]; });
+  var out = '', pos = 0;
+  spans.forEach(function (s) {
+    if (s[0] < pos) return;
+    out += esc(text.slice(pos, s[0])) + '<mark title="' + esc(s[2]) + '">' + esc(text.slice(s[0], s[1])) + '</mark>';
+    pos = s[1];
+  });
+  $('preview').innerHTML = out + esc(text.slice(pos));
+}
+
+$('in').addEventListener('input', render);
+$('demoAi').onclick = function () { $('in').value = DEMO_AI; render(); };
+$('demoPlain').onclick = function () { $('in').value = DEMO_PLAIN; render(); };
+$('clear').onclick = function () { $('in').value = ''; render(); };
+
+var bmSrc = '(function(){var A=(' + AITellsFactory.toString() + ')();(' + aiTellsPanel.toString() + ')(A);})()';
+$('bm').href = 'javascript:' + encodeURIComponent(bmSrc);
+$('bm').onclick = function (e) { e.preventDefault(); alert('请把它拖到书签栏，在别的网页上使用。'); };
+$('bmsize').textContent = (bmSrc.length / 1024).toFixed(1);
+render();
+</script>
+</body>
+</html>

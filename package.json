@@ -1,0 +1,9 @@
+{
+  "name": "ai-tells-zh",
+  "version": "0.1.0",
+  "description": "中文 AI 腔检测：网页、书签小工具和命令行，零依赖、不上传",
+  "main": "tells.js",
+  "bin": { "ai-tells": "cli.js" },
+  "scripts": { "test": "node test/run.js" },
+  "license": "MIT"
+}
